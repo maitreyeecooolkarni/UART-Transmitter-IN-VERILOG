@@ -48,8 +48,8 @@ begin
     end
 
     S1: begin
+       tx = 1'b0; // start bit
       if(tick)
-            tx = 1'b0; // start bit
             next_state = S2;
       end
 
