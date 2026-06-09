@@ -1,35 +1,37 @@
-`timescale 1ns/1ps
+`timescale 1ns/1ns
+  
+module baudrategenerator_tb;
 
-module BaudRateTb;
+   reg clk;
+   reg rate;
+   reg reset;
 
-reg clk;
-reg reset;
+   wire baud;
+   wire [10:0] count;
 
-wire tick;
-wire [3:0] count;
+   baudrategenerator uut(
+      .clk(clk),
+      .rate(rate),
+      .baud(baud),
+      .count(count),
+      .reset(reset)
+   );
 
-BaudRate DUT (
-    .clk(clk),
-    .reset(reset),
-    .tick(tick),
-    .count(count)
-);
+   // 50 Khz clock
+   always #10000 clk = ~clk;  //HAS been generated on basis of timescale
 
-always #5 clk = ~clk;
+   initial
+   begin
+      clk = 0;
+      rate = 1;
+      reset = 0;
 
-initial begin
-    $dumpfile("Baudrate.vcd");
-    $dumpvars(0, BaudRateTb);
+      $monitor("time = %0t | baud = %b | count = %d",
+                $time, baud, count);
 
-    clk = 0;
-    reset = 1;
+      #6000000;
 
-    #10 reset = 0;
+      $finish;
+   end
 
-    $monitor("time=%0t clk=%b count=%b reset=%b tick=%b",
-              $time, clk, count, reset, tick);
-
-    #200 $finish;
-end
-
-endmodule
+endmodule 
