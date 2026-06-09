@@ -1,73 +1,145 @@
-module FSM(
-  input clk,
-  input reset,          //All input signals are status signals 
-  input tx_start,
-  input tick,
-  input [3:0] count,
 
-  output reg tx,          //All output signals are control signal
-  output reg shift,
-  output reg load,
-  output reg done
+module FSM(
+    input  [7:0] data,
+    input        baud,
+    input        reset,
+    input        start,
+    input        paritybit,
+
+    output reg   out
 );
 
-reg [1:0] state, next_state;
 
-parameter S0 = 2'b00;  // IDLE
-parameter S1 = 2'b01;  // START BIT
-parameter S2 = 2'b10;  // DATA
-parameter S3 = 2'b11;  // STOP
+// Data + parity frame
+wire [8:0] final_data;
 
-// State register
-always @(posedge clk or posedge reset)
+
+// UART sends LSB first
+assign final_data = {paritybit, data};
+
+
+reg [1:0] state, nxtstate;
+reg [3:0] stop_count;
+
+
+// FSM States
+parameter IDLE  = 2'b00;
+parameter START = 2'b01;
+parameter DATA  = 2'b10;
+parameter STOP  = 2'b11;
+
+
+// =====================================================
+// STATE REGISTER
+// =====================================================
+
+always @(posedge baud)
 begin
+
     if(reset)
-        state <= S0;
+        state <= IDLE;
+
     else
-        state <= next_state;
+        state <= nxtstate;
+
 end
 
 
-// Next state + outputs
+
+// =====================================================
+// COUNTER LOGIC
+// =====================================================
+
+always @(posedge baud)
+begin
+
+    if(reset)
+        stop_count <= 4'b0000;
+
+    else if(state == DATA)
+        stop_count <= stop_count + 1'b1;
+
+    else
+        stop_count <= 4'b0000;
+
+end
+
+
+
+// =====================================================
+// NEXT STATE + OUTPUT LOGIC
+// =====================================================
+
 always @(*)
 begin
-    // default values
-    tx = 1'b1;
-    shift = 1'b0;
-    load = 1'b0;
-    done = 1'b0;
-    next_state = state;
+
+    nxtstate = state;
+    out      = 1'b1;
 
     case(state)
 
-    S0: begin
-        if(tx_start) begin
-            load = 1'b1;
-            next_state = S1;
-        end
+    IDLE:
+    begin
+
+        out = 1'b1;
+
+        if(start)
+            nxtstate = START;
+
+        else
+            nxtstate = IDLE;
+
     end
 
-    S1: begin
-       tx = 1'b0; // start bit
-      if(tick)
-            next_state = S2;
-      end
 
-    S2: begin
-        if(tick) begin
-            shift = 1'b1;
-            if(count == 4'd8)
-                next_state = S3;
-        end
+    START:
+    begin
+
+        // Start bit
+        out = 1'b0;
+
+        nxtstate = DATA;
+
     end
 
-    S3: begin
-        tx = 1'b1; // stop bit
-        done = 1'b1;
-        next_state = S0;
+
+    DATA:
+    begin
+
+        // Data bits + parity bit
+        out = final_data[stop_count];
+
+        if(stop_count == 4'b1000)
+            nxtstate = STOP;
+
+        else
+            nxtstate = DATA;
+
+    end
+
+
+    STOP:
+    begin
+
+        // Stop bit
+        out = 1'b1;
+
+        nxtstate = IDLE;
+
+    end
+
+
+    default:
+    begin
+
+        out = 1'b1;
+
+        nxtstate = IDLE;
+
     end
 
     endcase
+
 end
 
 endmodule
