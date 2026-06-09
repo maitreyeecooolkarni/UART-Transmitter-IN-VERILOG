@@ -1,36 +1,81 @@
-//Baud Rate Generator 
-// A basic generator where every 10 clk cycles a tick is generated.
+//Baud Generator
+//With two rates
+//Generates a baud tick(kind of baud click)
+//50khz clock
 
-//UART transmitter
+module baudrategenerator(
+    input clk,
+    input rate,
+    input reset,
 
-//UART baud rate generation
-
-module BaudRate(
-  input clk,
-  input reset,
-  output reg [3:0] count,
-  output reg tick
+    output reg baud
 );
 
-  always @(posedge clk) begin           //Counter + Tick
-    if(reset) begin
-       count <= 4'b0000;
-       tick  <= 0;
+reg [10:0] count;
+
+parameter B9600  = 1'b0;
+parameter B19200 = 1'b1;
+
+always @(posedge clk)
+begin
+
+    if(reset)
+    begin
+        count <= 11'd0;
+        baud  <= 1'b0;
     end
 
-    else if(count == 4'b1001) begin
-       count <= 4'b0000;
-       tick  <= 1;
+    else
+    begin
+
+        case(rate)
+
+        B9600:
+        begin
+
+            if(count == 11'd52)
+            begin
+                count <= 11'd0;
+                baud  <= 1'b1;
+            end
+
+            else
+            begin
+                count <= count + 1'b1;
+                baud  <= 1'b0;
+            end
+
+        end
+
+
+        B19200:
+        begin
+
+            if(count == 11'd26)
+            begin
+                count <= 11'd0;
+                baud  <= 1'b1;
+            end
+
+            else
+            begin
+                count <= count + 1'b1;
+                baud  <= 1'b0;
+            end
+
+        end
+
+
+        default:
+        begin
+            count <= 11'd0;
+            baud  <= 1'b0;
+        end
+
+        endcase
+
     end
 
-    else begin
-       count <= count + 1;
-       tick  <= 0;
-    end
 end
-  
-endmodule
-      
-      
-      
 
+endmodule
